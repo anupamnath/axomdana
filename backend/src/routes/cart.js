@@ -32,7 +32,7 @@ router.post(
     '/',
     [
         body('product_id').isInt().withMessage('Product ID is required'),
-        body('quantity').isInt({ min: 5 }).withMessage('Minimum order quantity is 5 bags'),
+        body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -97,7 +97,7 @@ router.post(
 // PUT /api/cart/:id - Update cart item quantity
 router.put(
     '/:id',
-    [body('quantity').isInt({ min: 5 }).withMessage('Minimum order quantity is 5 bags')],
+    [body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1')],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
