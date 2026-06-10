@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: axomdana-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-axomdana_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password is required}
+      POSTGRES_DB: ${DB_NAME:-axomdana_db}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-axomdana_user} -d ${DB_NAME:-axomdana_db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend API ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: axomdana-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${DB_USER:-axomdana_user}:${DB_PASSWORD:?}@postgres:5432/${DB_NAME:-axomdana_db}
+      JWT_SECRET: ${JWT_SECRET:?JWT secret is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://axomdana.com,https://www.axomdana.com}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "npm run migrate && npm run seed && npm start"
+
+  # ── Frontend Static Files ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: axomdana-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # ── Nginx Reverse Proxy ──
+  nginx:
+    image: nginx:alpine
+    container_name: axomdana-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-www:/var/www/certbot
+      - certbot-etc:/etc/letsencrypt
+    depends_on:
+      - frontend
+      - backend
+
+  # ── Certbot (Let's Encrypt Auto-Renewal) ──
+  certbot:
+    image: certbot/certbot
+    container_name: axomdana-certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-etc:/etc/letsencrypt
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do
+        certbot renew --quiet
+        sleep 12h &
+        wait $${!}
+      done"
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-www:
+  certbot-etc:

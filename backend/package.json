@@ -1,0 +1,30 @@
+{
+    "name": "ecommerce-backend",
+    "version": "1.0.0",
+    "description": "E-commerce REST API with Node.js, Express, and PostgreSQL",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "dev": "nodemon src/index.js",
+        "migrate": "node src/config/migrate.js",
+        "seed": "node src/config/seed.js"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.0",
+        "express-rate-limit": "^7.4.1",
+        "express-validator": "^7.2.0",
+        "helmet": "^8.0.0",
+        "jsonwebtoken": "^9.0.2",
+        "multer": "^2.1.1",
+        "nodemailer": "^8.0.10",
+        "pdfkit": "^0.19.0",
+        "pg": "^8.13.0",
+        "qrcode": "^1.5.4"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.4"
+    }
+}
