@@ -16,6 +16,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminReviews from './pages/admin/AdminReviews';
 
 export default function App() {
     return (
@@ -107,6 +108,16 @@ export default function App() {
                             <AdminRoute>
                                 <AdminLayout>
                                     <AdminSettings />
+                                </AdminLayout>
+                            </AdminRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/reviews"
+                        element={
+                            <AdminRoute>
+                                <AdminLayout>
+                                    <AdminReviews />
                                 </AdminLayout>
                             </AdminRoute>
                         }

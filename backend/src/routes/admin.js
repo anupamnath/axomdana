@@ -795,4 +795,199 @@ router.put(
     }
 );
 
+// =====================
+// REVIEWS MODERATION
+// =====================
+
+// GET /api/admin/reviews - List reviews for moderation (paginated, optional status filter)
+router.get('/reviews', async (req, res) => {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+    const status = req.query.status || 'pending'; // pending | approved | rejected | all
+
+    const params = [];
+    let whereClause = 'WHERE 1=1';
+    if (status === 'pending') {
+        whereClause += ' AND r.is_approved = FALSE AND r.is_rejected = FALSE';
+    } else if (status === 'approved') {
+        whereClause += ' AND r.is_approved = TRUE';
+    } else if (status === 'rejected') {
+        whereClause += ' AND r.is_rejected = TRUE';
+    }
+
+    try {
+        const countRes = await db.query(`SELECT COUNT(*)::int AS total FROM product_reviews r ${whereClause}`, params);
+        const total = countRes.rows[0].total;
+
+        params.push(limit, offset);
+        const result = await db.query(
+            `SELECT r.id, r.product_id, r.user_id, r.rating, r.title, r.body,
+                    r.delivery_rating, r.quality_rating,
+                    r.is_approved, r.is_rejected, r.rejection_reason, r.created_at,
+                    p.name AS product_name, p.slug AS product_slug, p.image_url AS product_image,
+                    u.name AS user_name, u.email AS user_email,
+                    COALESCE(
+                        (SELECT json_agg(ri.image_url ORDER BY ri.sort_order, ri.id)
+                           FROM review_images ri WHERE ri.review_id = r.id),
+                        '[]'::json
+                    ) AS images
+             FROM product_reviews r
+             JOIN products p ON p.id = r.product_id
+             JOIN users u ON u.id = r.user_id
+             ${whereClause}
+             ORDER BY r.created_at DESC
+             LIMIT $${params.length - 1} OFFSET $${params.length}`,
+            params
+        );
+
+        res.json({
+            reviews: result.rows,
+            pagination: {
+                page, limit, total,
+                totalPages: Math.ceil(total / limit) || 1,
+            },
+        });
+    } catch (err) {
+        console.error('Admin get reviews error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// PUT /api/admin/reviews/:id/approve - Approve a review
+router.put('/reviews/:id/approve', async (req, res) => {
+    try {
+        const result = await db.query(
+            `UPDATE product_reviews
+             SET is_approved = TRUE, is_rejected = FALSE, rejection_reason = NULL, updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, is_approved, is_rejected`,
+            [req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Review not found.' });
+        }
+        res.json({ review: result.rows[0], message: 'Review approved.' });
+    } catch (err) {
+        console.error('Approve review error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// PUT /api/admin/reviews/:id/reject - Reject a review
+router.put(
+    '/reviews/:id/reject',
+    [
+        body('reason').optional({ checkFalsy: true }).isLength({ max: 255 }),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        try {
+            const result = await db.query(
+                `UPDATE product_reviews
+                 SET is_approved = FALSE, is_rejected = TRUE, rejection_reason = $2, updated_at = NOW()
+                 WHERE id = $1
+                 RETURNING id, is_approved, is_rejected, rejection_reason`,
+                [req.params.id, req.body.reason || null]
+            );
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Review not found.' });
+            }
+            res.json({ review: result.rows[0], message: 'Review rejected.' });
+        } catch (err) {
+            console.error('Reject review error:', err);
+            res.status(500).json({ error: 'Server error.' });
+        }
+    }
+);
+
+// DELETE /api/admin/reviews/:id - Delete a review
+router.delete('/reviews/:id', async (req, res) => {
+    try {
+        const result = await db.query('DELETE FROM product_reviews WHERE id = $1 RETURNING id', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Review not found.' });
+        }
+        res.json({ message: 'Review deleted.' });
+    } catch (err) {
+        console.error('Admin delete review error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// =====================
+// DELIVERY IMAGES MODERATION
+// =====================
+
+// GET /api/admin/delivery-images - List delivery images (admin)
+router.get('/delivery-images', async (req, res) => {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 24, 1), 100);
+    const offset = (page - 1) * limit;
+
+    try {
+        const countRes = await db.query('SELECT COUNT(*)::int AS total FROM delivery_images');
+        const total = countRes.rows[0].total;
+
+        const result = await db.query(
+            `SELECT di.id, di.user_id, di.product_id, di.image_url, di.caption,
+                    di.customer_name, di.location, di.is_featured, di.is_approved, di.created_at,
+                    p.name AS product_name, p.slug AS product_slug
+             FROM delivery_images di
+             LEFT JOIN products p ON p.id = di.product_id
+             ORDER BY di.created_at DESC
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
+
+        res.json({
+            images: result.rows,
+            pagination: {
+                page, limit, total,
+                totalPages: Math.ceil(total / limit) || 1,
+            },
+        });
+    } catch (err) {
+        console.error('Admin get delivery images error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// PUT /api/admin/delivery-images/:id/feature - Toggle featured flag
+router.put('/delivery-images/:id/feature', async (req, res) => {
+    try {
+        const result = await db.query(
+            `UPDATE delivery_images
+             SET is_featured = NOT is_featured
+             WHERE id = $1
+             RETURNING id, is_featured`,
+            [req.params.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Image not found.' });
+        }
+        res.json({ image: result.rows[0] });
+    } catch (err) {
+        console.error('Toggle featured delivery image error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
+// DELETE /api/admin/delivery-images/:id - Delete a delivery image (admin)
+router.delete('/delivery-images/:id', async (req, res) => {
+    try {
+        const result = await db.query('DELETE FROM delivery_images WHERE id = $1 RETURNING id', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Image not found.' });
+        }
+        res.json({ message: 'Image deleted.' });
+    } catch (err) {
+        console.error('Admin delete delivery image error:', err);
+        res.status(500).json({ error: 'Server error.' });
+    }
+});
+
 module.exports = router;

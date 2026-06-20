@@ -63,6 +63,22 @@ export const ordersAPI = {
     getInvoice: (id) => api.get(`/orders/${id}/invoice`, { responseType: 'blob' }),
 };
 
+// Reviews (verified-buyer product reviews with star ratings)
+export const reviewsAPI = {
+    getByProduct: (productId, params) =>
+        api.get(`/reviews/product/${productId}`, { params }),
+    getEligibility: (productId) => api.get(`/reviews/eligibility/${productId}`),
+    submit: (data) => api.post('/reviews', data),
+    delete: (id) => api.delete(`/reviews/${id}`),
+};
+
+// Delivery Images (customer-shared delivery proof photos)
+export const deliveryImagesAPI = {
+    list: (params) => api.get('/delivery-images', { params }),
+    submit: (data) => api.post('/delivery-images', data),
+    delete: (id) => api.delete(`/delivery-images/${id}`),
+};
+
 // Upload
 export const uploadAPI = {
     uploadImage: (formData) =>
@@ -96,6 +112,19 @@ export const adminAPI = {
     deleteOrder: (id) => api.delete(`/admin/orders/${id}`),
     sendOrderConfirmation: (id) => api.post(`/admin/orders/${id}/send-confirmation`),
     sendOrderStatusUpdate: (id) => api.post(`/admin/orders/${id}/send-status-update`),
+
+    // Reviews moderation
+    getReviews: (params) => api.get('/admin/reviews', { params }),
+    approveReview: (id) => api.put(`/admin/reviews/${id}/approve`),
+    rejectReview: (id, reason) =>
+        api.put(`/admin/reviews/${id}/reject`, { reason }),
+    deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
+
+    // Delivery images moderation
+    getDeliveryImages: (params) => api.get('/admin/delivery-images', { params }),
+    toggleFeaturedDeliveryImage: (id) =>
+        api.put(`/admin/delivery-images/${id}/feature`),
+    deleteDeliveryImage: (id) => api.delete(`/admin/delivery-images/${id}`),
 
     // Hero Slides
     getHeroSlides: () => api.get('/admin/hero-slides'),

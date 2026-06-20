@@ -12,6 +12,8 @@ const orderRoutes = require('./routes/orders');
 const adminRoutes = require('./routes/admin');
 const uploadRoutes = require('./routes/upload');
 const publicRoutes = require('./routes/public');
+const reviewRoutes = require('./routes/reviews');
+const deliveryImageRoutes = require('./routes/deliveryImages');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -82,6 +84,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/delivery-images', deliveryImageRoutes);
 app.use('/api', publicRoutes);
 
 // 404 handler

@@ -89,11 +89,58 @@ const migrate = async () => {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    -- Product reviews (verified-buyer reviews with star ratings, moderated by admin)
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      title VARCHAR(120),
+      body TEXT NOT NULL,
+      delivery_rating SMALLINT CHECK (delivery_rating IS NULL OR (delivery_rating >= 1 AND delivery_rating <= 5)),
+      quality_rating SMALLINT CHECK (quality_rating IS NULL OR (quality_rating >= 1 AND quality_rating <= 5)),
+      is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+      is_rejected BOOLEAN NOT NULL DEFAULT FALSE,
+      rejection_reason VARCHAR(255),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(product_id, user_id)
+    );
+
+    -- Review images: photos attached to a review (delivery photos etc.)
+    CREATE TABLE IF NOT EXISTS review_images (
+      id SERIAL PRIMARY KEY,
+      review_id INTEGER NOT NULL REFERENCES product_reviews(id) ON DELETE CASCADE,
+      image_url VARCHAR(500) NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Delivery images: customer-shared photos of delivered orders (gallery on home + product page)
+    CREATE TABLE IF NOT EXISTS delivery_images (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+      product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+      image_url VARCHAR(500) NOT NULL,
+      caption VARCHAR(255),
+      customer_name VARCHAR(120),
+      location VARCHAR(120),
+      is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+      is_approved BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_cart_items_user ON cart_items(user_id);
     CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_reviews_product_approved ON product_reviews(product_id, is_approved);
+    CREATE INDEX IF NOT EXISTS idx_reviews_user ON product_reviews(user_id);
+    CREATE INDEX IF NOT EXISTS idx_review_images_review ON review_images(review_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_images_product ON delivery_images(product_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_images_approved ON delivery_images(is_approved, created_at DESC);
   `;
 
   // Add missing columns to orders table (for existing databases)
@@ -172,7 +219,7 @@ const migrate = async () => {
         ALTER TABLE products ADD COLUMN wholesale_price DECIMAL(10, 2);
       END IF;
 
-      -- Products: Featured flag — featured products show first in the products list
+      -- Products: Featured flag - featured products show first in the products list
       IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'products' AND column_name = 'is_featured'
@@ -180,6 +227,52 @@ const migrate = async () => {
         ALTER TABLE products ADD COLUMN is_featured BOOLEAN NOT NULL DEFAULT FALSE;
       END IF;
     END $$;
+
+    -- Create new tables (product_reviews, review_images, delivery_images) for existing databases
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      title VARCHAR(120),
+      body TEXT NOT NULL,
+      delivery_rating SMALLINT CHECK (delivery_rating IS NULL OR (delivery_rating >= 1 AND delivery_rating <= 5)),
+      quality_rating SMALLINT CHECK (quality_rating IS NULL OR (quality_rating >= 1 AND quality_rating <= 5)),
+      is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+      is_rejected BOOLEAN NOT NULL DEFAULT FALSE,
+      rejection_reason VARCHAR(255),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(product_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS review_images (
+      id SERIAL PRIMARY KEY,
+      review_id INTEGER NOT NULL REFERENCES product_reviews(id) ON DELETE CASCADE,
+      image_url VARCHAR(500) NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS delivery_images (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+      product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+      image_url VARCHAR(500) NOT NULL,
+      caption VARCHAR(255),
+      customer_name VARCHAR(120),
+      location VARCHAR(120),
+      is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+      is_approved BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reviews_product_approved ON product_reviews(product_id, is_approved);
+    CREATE INDEX IF NOT EXISTS idx_reviews_user ON product_reviews(user_id);
+    CREATE INDEX IF NOT EXISTS idx_review_images_review ON review_images(review_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_images_product ON delivery_images(product_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_images_approved ON delivery_images(is_approved, created_at DESC);
 
     -- Backfill: for existing products, set wholesale_price = price and mrp = price if missing
     UPDATE products SET wholesale_price = price WHERE wholesale_price IS NULL;

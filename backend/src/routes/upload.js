@@ -3,7 +3,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { authenticate } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/admin');
 
 const router = express.Router();
 
@@ -40,8 +39,9 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// POST /api/upload - Upload an image (admin only)
-router.post('/', requireAdmin, (req, res) => {
+// POST /api/upload - Upload an image (authenticated users: product images for admin, reviews/delivery for users)
+// Admin uploads go to /api/admin/upload for admin-only product imagery
+router.post('/', authenticate, (req, res) => {
     upload.single('image')(req, res, (err) => {
         if (err) {
             if (err instanceof multer.MulterError) {

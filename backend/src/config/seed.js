@@ -165,6 +165,163 @@ const seed = async () => {
             );
         }
 
+        // Seed sample reviews for the first 3 products (approved, by Admin demo user)
+        // Note: the user submitting a review here is the seeded admin (id 1) — these exist
+        // purely as demo content so the front-end has something to show out of the box.
+        // In production, the verified-buyer check requires a delivered order.
+        const sampleReviews = [
+            {
+                product_slug: 'premium-poultry-feed-starter',
+                rating: 5,
+                title: 'Excellent starter feed for chicks',
+                body: 'My chicks have been thriving on this feed. Healthy growth, bright feathers, and zero health issues in the first 6 weeks. The pellets are uniform and easy to digest. Highly recommended for anyone raising broilers or layers from day one.',
+                delivery_rating: 5,
+                quality_rating: 5,
+            },
+            {
+                product_slug: 'premium-poultry-feed-grower',
+                rating: 5,
+                title: 'Best grower feed I have tried',
+                body: 'Switched from a competitor brand and the difference is visible. Egg production is up and birds look healthier. Packaging is sturdy and delivery was fast.',
+                delivery_rating: 4,
+                quality_rating: 5,
+            },
+            {
+                product_slug: 'dairy-cattle-feed-high-yield',
+                rating: 4,
+                title: 'Good yield improvement',
+                body: 'Noticed a clear bump in milk yield after two weeks on this feed. Cows love the taste. Took off one star because the bag could be a bit more durable, but the contents are top quality.',
+                delivery_rating: 5,
+                quality_rating: 4,
+            },
+            {
+                product_slug: 'fish-feed-floating-pellets',
+                rating: 5,
+                title: 'Clean water, healthy fish',
+                body: 'Floating pellets mean I can monitor feeding easily, and the water stays much cleaner compared to sinking feed. Fish growth is excellent.',
+                delivery_rating: 5,
+                quality_rating: 5,
+            },
+            {
+                product_slug: 'horse-feed-performance-blend',
+                rating: 5,
+                title: 'Great energy for sport horses',
+                body: 'My eventing horse has noticeable stamina improvement on this blend. No digestive issues, coat looks fantastic. Worth every rupee.',
+                delivery_rating: 5,
+                quality_rating: 5,
+            },
+        ];
+
+        // Get admin user id
+        const adminRes = await db.query("SELECT id FROM users WHERE email = 'admin@axomdana.in' LIMIT 1");
+        const adminId = adminRes.rows[0]?.id;
+        if (adminId) {
+            for (const r of sampleReviews) {
+                const prodRes = await db.query('SELECT id FROM products WHERE slug = $1', [r.product_slug]);
+                if (prodRes.rows.length === 0) continue;
+                const productId = prodRes.rows[0].id;
+
+                const insertRes = await db.query(
+                    `INSERT INTO product_reviews
+                        (product_id, user_id, rating, title, body, delivery_rating, quality_rating, is_approved)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+                     ON CONFLICT (product_id, user_id) DO NOTHING
+                     RETURNING id`,
+                    [productId, adminId, r.rating, r.title, r.body, r.delivery_rating, r.quality_rating]
+                );
+                if (insertRes.rows.length === 0) continue;
+                const reviewId = insertRes.rows[0].id;
+
+                // Attach a sample review image (using Unsplash photo as placeholder)
+                const reviewImages = {
+                    'premium-poultry-feed-starter': 'https://images.unsplash.com/photo-1569096651661-05d1294c6a99?w=600&q=80',
+                    'premium-poultry-feed-grower': 'https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?w=600&q=80',
+                    'dairy-cattle-feed-high-yield': 'https://images.unsplash.com/photo-1527153857715-3908f2bae5e8?w=600&q=80',
+                    'fish-feed-floating-pellets': 'https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=600&q=80',
+                    'horse-feed-performance-blend': 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=600&q=80',
+                };
+                const imgUrl = reviewImages[r.product_slug];
+                if (imgUrl) {
+                    await db.query(
+                        'INSERT INTO review_images (review_id, image_url, sort_order) VALUES ($1, $2, 0)',
+                        [reviewId, imgUrl]
+                    );
+                }
+            }
+        }
+
+        // Seed sample delivery images (any user can upload; these are pre-approved & featured for demo)
+        const sampleDeliveryImages = [
+            {
+                product_slug: 'premium-poultry-feed-starter',
+                image_url: 'https://images.unsplash.com/photo-1569096651661-05d1294c6a99?w=800&q=80',
+                caption: 'Healthy chicks on Axom Dana starter feed - 5 weeks old',
+                customer_name: 'Rajesh Kumar',
+                location: 'Guwahati, Assam',
+                is_featured: true,
+            },
+            {
+                product_slug: 'dairy-cattle-feed-high-yield',
+                image_url: 'https://images.unsplash.com/photo-1527153857715-3908f2bae5e8?w=800&q=80',
+                caption: 'Bulk delivery to our dairy farm - 200 bags received',
+                customer_name: 'Priya Sharma',
+                location: 'Jorhat, Assam',
+                is_featured: true,
+            },
+            {
+                product_slug: 'fish-feed-floating-pellets',
+                image_url: 'https://images.unsplash.com/photo-1545474840-d4e94d9d8b3c?w=800&q=80',
+                caption: 'Fish farm pond - excellent growth on Axom Dana floating pellets',
+                customer_name: 'Anil Das',
+                location: 'Dibrugarh, Assam',
+                is_featured: true,
+            },
+            {
+                product_slug: 'horse-feed-performance-blend',
+                image_url: 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=800&q=80',
+                caption: 'My polo ponies love this feed! Coat is glossy and energy is great.',
+                customer_name: 'Mohit Singh',
+                location: 'Shillong, Meghalaya',
+                is_featured: false,
+            },
+            {
+                product_slug: 'organic-poultry-feed-layer',
+                image_url: 'https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?w=800&q=80',
+                caption: 'Free-range chickens enjoying their organic layer feed',
+                customer_name: 'Sunita Devi',
+                location: 'Itanagar, Arunachal Pradesh',
+                is_featured: false,
+            },
+            {
+                product_slug: 'goat-sheep-feed-growth-plus',
+                image_url: 'https://images.unsplash.com/photo-1480044965905-02098d419e96?w=800&q=80',
+                caption: 'Goats thriving on the Growth Plus formula - excellent weight gain',
+                customer_name: 'Bharat Patel',
+                location: 'Silchar, Assam',
+                is_featured: false,
+            },
+        ];
+
+        for (const img of sampleDeliveryImages) {
+            const prodRes = await db.query('SELECT id FROM products WHERE slug = $1', [img.product_slug]);
+            const productId = prodRes.rows[0]?.id;
+            await db.query(
+                `INSERT INTO delivery_images
+                    (user_id, product_id, image_url, caption, customer_name, location, is_featured, is_approved)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+                 ON CONFLICT DO NOTHING`,
+                [
+                    adminId,
+                    productId,
+                    img.image_url,
+                    img.caption,
+                    img.customer_name,
+                    img.location,
+                    img.is_featured,
+                ]
+            );
+        }
+
         console.log('Seeding completed successfully.');
     } catch (err) {
         console.error('Seeding failed:', err);

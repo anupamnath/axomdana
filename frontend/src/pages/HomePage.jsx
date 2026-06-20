@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { productsAPI, publicAPI } from '../services/api';
+import { productsAPI, publicAPI, deliveryImagesAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import StarRating from '../components/StarRating';
 
 // Helper: get effective selling price (wholesale_price if set, else price)
 const getItemPrice = (product) => {
@@ -55,6 +56,8 @@ export default function HomePage() {
     const [heroSlides, setHeroSlides] = useState(defaultHeroSlides);
     const [heroIndex, setHeroIndex] = useState(0);
     const [heroTagline, setHeroTagline] = useState('Axom Dana LLC — Beharbari, Guwahati');
+    const [featuredDeliveries, setFeaturedDeliveries] = useState([]);
+    const [deliveriesLoading, setDeliveriesLoading] = useState(true);
     const { addToCart } = useCart();
     const { user } = useAuth();
     const productsRef = useRef(null);
@@ -88,6 +91,25 @@ export default function HomePage() {
         }, 5000);
         return () => clearInterval(interval);
     }, [heroSlides.length]);
+
+    // Fetch featured delivery images for social-proof gallery
+    useEffect(() => {
+        const fetchFeaturedDeliveries = async () => {
+            setDeliveriesLoading(true);
+            try {
+                const res = await deliveryImagesAPI.list({
+                    featured: 'true',
+                    limit: 8,
+                });
+                setFeaturedDeliveries(res.data.images || []);
+            } catch (err) {
+                console.error('Failed to fetch delivery images:', err);
+            } finally {
+                setDeliveriesLoading(false);
+            }
+        };
+        fetchFeaturedDeliveries();
+    }, []);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -312,15 +334,134 @@ export default function HomePage() {
             </section>
 
             {/* ════════════════════════════════════════ */}
+            {/* SOCIAL PROOF / TRUST BAR                 */}
+            {/* ════════════════════════════════════════ */}
+            <section
+                style={{
+                    padding: '2.25rem 0',
+                    backgroundColor: 'white',
+                    borderBottom: '1px solid var(--border-light)',
+                }}
+            >
+                <div className="container">
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                            gap: '1rem',
+                        }}
+                    >
+                        {[
+                            {
+                                icon: (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                        <polyline points="22 4 12 14.01 9 11.01" />
+                                    </svg>
+                                ),
+                                value: 'Lab Tested',
+                                label: 'Every batch verified for quality',
+                            },
+                            {
+                                icon: (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="1" y="3" width="15" height="13" rx="2" />
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                        <circle cx="5.5" cy="18.5" r="2.5" />
+                                        <circle cx="18.5" cy="18.5" r="2.5" />
+                                    </svg>
+                                ),
+                                value: 'Free Delivery',
+                                label: 'On orders above ₹2,000',
+                            },
+                            {
+                                icon: (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                ),
+                                value: '4.8 / 5',
+                                label: 'Customer rating on verified deliveries',
+                            },
+                            {
+                                icon: (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                                        <circle cx="12" cy="10" r="3" />
+                                    </svg>
+                                ),
+                                value: 'Across Assam',
+                                label: 'Delivering to 25+ districts',
+                            },
+                        ].map((item, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.875rem',
+                                    padding: '0.875rem 1rem',
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid var(--border-light)',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        flexShrink: 0,
+                                        width: '2.5rem',
+                                        height: '2.5rem',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'rgba(26, 138, 63, 0.12)',
+                                        color: 'var(--primary)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    {item.icon}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '0.9375rem',
+                                            fontWeight: 700,
+                                            color: 'var(--text)',
+                                            letterSpacing: '-0.01em',
+                                            lineHeight: 1.2,
+                                        }}
+                                    >
+                                        {item.value}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '0.75rem',
+                                            color: 'var(--text-tertiary)',
+                                            lineHeight: 1.4,
+                                            marginTop: '0.125rem',
+                                        }}
+                                    >
+                                        {item.label}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ════════════════════════════════════════ */}
             {/* CATEGORY STRIP - Apple Style Pills       */}
             {/* ════════════════════════════════════════ */}
             <section
                 style={{
                     padding: '1.5rem 0',
-                    backgroundColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    backdropFilter: 'saturate(180%) blur(18px)',
+                    WebkitBackdropFilter: 'saturate(180%) blur(18px)',
                     borderBottom: '1px solid var(--border-light)',
                     position: 'sticky',
-                    top: '3.5rem',
+                    top: '3.75rem',
                     zIndex: 50,
                 }}
             >
@@ -740,6 +881,219 @@ export default function HomePage() {
                     )}
                 </div>
             </section>
+
+            {/* ════════════════════════════════════════ */}
+            {/* DELIVERY GALLERY - Customer shared      */}
+            {/* ════════════════════════════════════════ */}
+            {!deliveriesLoading && featuredDeliveries.length > 0 && (
+                <section
+                    style={{
+                        padding: '4rem 0',
+                        backgroundColor: 'white',
+                    }}
+                >
+                    <div className="container">
+                        <div
+                            style={{
+                                textAlign: 'center',
+                                marginBottom: '2.5rem',
+                            }}
+                        >
+                            <span
+                                style={{
+                                    display: 'inline-block',
+                                    padding: '0.375rem 0.875rem',
+                                    backgroundColor: 'rgba(26, 138, 63, 0.1)',
+                                    color: 'var(--primary)',
+                                    borderRadius: '9999px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.04em',
+                                    textTransform: 'uppercase',
+                                    marginBottom: '0.75rem',
+                                }}
+                            >
+                                Real Customers · Real Deliveries
+                            </span>
+                            <h2
+                                className="section-title"
+                                style={{ fontSize: '2rem' }}
+                            >
+                                From Our Customers' Farms
+                            </h2>
+                            <p
+                                className="section-subtitle"
+                                style={{
+                                    fontSize: '1rem',
+                                    margin: '0.5rem auto 0',
+                                    maxWidth: '520px',
+                                }}
+                            >
+                                Verified photos shared by happy farmers across
+                                Assam and Northeast India.
+                            </p>
+                        </div>
+
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns:
+                                    'repeat(auto-fill, minmax(220px, 1fr))',
+                                gap: '1rem',
+                            }}
+                        >
+                            {featuredDeliveries.map((img, i) => (
+                                <div
+                                    key={img.id}
+                                    style={{
+                                        position: 'relative',
+                                        aspectRatio: '1 / 1',
+                                        borderRadius: 'var(--radius-lg)',
+                                        overflow: 'hidden',
+                                        backgroundColor: '#f5f5f7',
+                                        boxShadow: 'var(--shadow-sm)',
+                                        cursor: 'pointer',
+                                        animation: `fadeInUp 0.5s ease-out ${i * 0.07
+                                            }s both`,
+                                        transition:
+                                            'transform 0.3s ease, box-shadow 0.3s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform =
+                                            'translateY(-4px) scale(1.01)';
+                                        e.currentTarget.style.boxShadow =
+                                            'var(--shadow-lg)';
+                                        const overlay =
+                                            e.currentTarget.querySelector(
+                                                '.delivery-overlay'
+                                            );
+                                        if (overlay)
+                                            overlay.style.opacity = '1';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform =
+                                            'translateY(0) scale(1)';
+                                        e.currentTarget.style.boxShadow =
+                                            'var(--shadow-sm)';
+                                        const overlay =
+                                            e.currentTarget.querySelector(
+                                                '.delivery-overlay'
+                                            );
+                                        if (overlay)
+                                            overlay.style.opacity = '0';
+                                    }}
+                                >
+                                    <img
+                                        src={img.image_url}
+                                        alt={
+                                            img.caption ||
+                                            `Delivery by ${img.customer_name}`
+                                        }
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                        }}
+                                        loading="lazy"
+                                    />
+                                    <div
+                                        className="delivery-overlay"
+                                        style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            background:
+                                                'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'flex-end',
+                                            padding: '1rem',
+                                            color: 'white',
+                                            opacity: 0,
+                                            transition: 'opacity 0.25s ease',
+                                        }}
+                                    >
+                                        {img.customer_name && (
+                                            <div
+                                                style={{
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: 700,
+                                                    marginBottom: '0.125rem',
+                                                }}
+                                            >
+                                                {img.customer_name}
+                                            </div>
+                                        )}
+                                        {img.location && (
+                                            <div
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    opacity: 0.9,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.25rem',
+                                                }}
+                                            >
+                                                <svg
+                                                    width="11"
+                                                    height="11"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                >
+                                                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                                                    <circle cx="12" cy="10" r="3" />
+                                                </svg>
+                                                {img.location}
+                                            </div>
+                                        )}
+                                        {img.caption && (
+                                            <div
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    opacity: 0.85,
+                                                    marginTop: '0.375rem',
+                                                    fontStyle: 'italic',
+                                                }}
+                                            >
+                                                "{img.caption}"
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {user && (
+                            <div
+                                style={{
+                                    textAlign: 'center',
+                                    marginTop: '2rem',
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        fontSize: '0.875rem',
+                                        color: 'var(--text-secondary)',
+                                    }}
+                                >
+                                    Got a delivery you'd like to share?{' '}
+                                    <Link
+                                        to="/orders"
+                                        style={{
+                                            color: 'var(--primary)',
+                                            fontWeight: 600,
+                                            textDecoration: 'none',
+                                        }}
+                                    >
+                                        Upload from your orders →
+                                    </Link>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            )}
 
             {/* ════════════════════════════════════════ */}
             {/* FEATURES SECTION - Apple Style Grid      */}
