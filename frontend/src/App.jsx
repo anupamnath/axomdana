@@ -22,7 +22,7 @@ export default function App() {
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Navbar />
-            <main style={{ flex: 1, paddingTop: '4rem' }}>
+            <main style={{ flex: 1 }}>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/products/:slug" element={<ProductPage />} />
