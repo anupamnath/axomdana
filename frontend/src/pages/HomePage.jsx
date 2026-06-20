@@ -4,6 +4,18 @@ import { productsAPI, publicAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+// Helper: get effective selling price (wholesale_price if set, else price)
+const getItemPrice = (product) => {
+    const wp = product.wholesale_price !== null && product.wholesale_price !== undefined ? product.wholesale_price : product.price;
+    return parseFloat(wp);
+};
+
+// Helper: get MRP (with fallback to selling price if not set)
+const getMrp = (product) => {
+    if (product.mrp !== null && product.mrp !== undefined) return parseFloat(product.mrp);
+    return getItemPrice(product);
+};
+
 const categories = [
     { name: 'All', icon: '🌾', slug: '' },
     { name: 'Poultry Feed', icon: '🐔', slug: 'Poultry Feed' },
@@ -524,8 +536,30 @@ export default function HomePage() {
                                                 >
                                                     {product.category}
                                                 </span>
+                                                {/* Featured Badge */}
+                                                {product.is_featured && (
+                                                    <span
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '0.75rem',
+                                                            right: '0.75rem',
+                                                            padding: '0.25rem 0.625rem',
+                                                            backgroundColor: 'rgba(255, 69, 58, 0.95)',
+                                                            borderRadius: '9999px',
+                                                            fontSize: '0.6875rem',
+                                                            fontWeight: 700,
+                                                            color: 'white',
+                                                            letterSpacing: '0.02em',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.25rem',
+                                                        }}
+                                                    >
+                                                        ★ Featured
+                                                    </span>
+                                                )}
                                                 {/* Stock Badge */}
-                                                {product.stock <= 10 && product.stock > 0 && (
+                                                {!product.is_featured && product.stock <= 10 && product.stock > 0 && (
                                                     <span
                                                         style={{
                                                             position: 'absolute',
@@ -579,19 +613,53 @@ export default function HomePage() {
                                                 {product.description}
                                             </p>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <div>
-                                                    <span
-                                                        style={{
-                                                            fontSize: '1.25rem',
-                                                            fontWeight: 700,
-                                                            color: 'var(--primary)',
-                                                            letterSpacing: '-0.02em',
-                                                        }}
-                                                    >
-                                                        ₹{parseFloat(product.price).toLocaleString('en-IN')}
-                                                    </span>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: '0.25rem' }}>/bag</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                                                    {(() => {
+                                                        const mrp = getMrp(product);
+                                                        const sellPrice = getItemPrice(product);
+                                                        const hasDiscount = mrp > sellPrice;
+                                                        return (
+                                                            <>
+                                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: '1.25rem',
+                                                                            fontWeight: 700,
+                                                                            color: 'var(--primary)',
+                                                                            letterSpacing: '-0.02em',
+                                                                        }}
+                                                                    >
+                                                                        ₹{sellPrice.toLocaleString('en-IN')}
+                                                                    </span>
+                                                                    {hasDiscount && (
+                                                                        <span
+                                                                            style={{
+                                                                                fontSize: '0.8125rem',
+                                                                                color: 'var(--text-tertiary)',
+                                                                                textDecoration: 'line-through',
+                                                                                fontWeight: 500,
+                                                                            }}
+                                                                        >
+                                                                            ₹{mrp.toLocaleString('en-IN')}
+                                                                        </span>
+                                                                    )}
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>/bag</span>
+                                                                </div>
+                                                                {hasDiscount && (
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: '0.6875rem',
+                                                                            color: '#1a8a3f',
+                                                                            fontWeight: 600,
+                                                                        }}
+                                                                    >
+                                                                        Save ₹{(mrp - sellPrice).toLocaleString('en-IN')}/bag
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <button
                                                     className="btn btn-primary btn-sm"

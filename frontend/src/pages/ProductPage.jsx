@@ -4,6 +4,18 @@ import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+// Helper: get effective selling price (wholesale_price if set, else price)
+const getItemPrice = (product) => {
+    const wp = product.wholesale_price !== null && product.wholesale_price !== undefined ? product.wholesale_price : product.price;
+    return parseFloat(wp);
+};
+
+// Helper: get MRP (with fallback to selling price if not set)
+const getMrp = (product) => {
+    if (product.mrp !== null && product.mrp !== undefined) return parseFloat(product.mrp);
+    return getItemPrice(product);
+};
+
 export default function ProductPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -39,12 +51,13 @@ export default function ProductPage() {
 
     const handleBuyNow = () => {
         if (!user) return;
+        // Buy Now uses the actual selling price (wholesale_price)
         navigate('/checkout', {
             state: {
                 buyNow: true,
                 productId: product.id,
                 quantity,
-                price: product.price,
+                price: getItemPrice(product),
                 name: product.name,
                 image_url: product.image_url,
             },
@@ -147,18 +160,50 @@ export default function ProductPage() {
                         {product.name}
                     </h1>
 
-                    <p
-                        style={{
-                            fontSize: '2.5rem',
-                            fontWeight: 800,
-                            color: 'var(--primary)',
-                            letterSpacing: '-0.03em',
-                            marginBottom: '1.5rem',
-                        }}
-                    >
-                        ₹{parseFloat(product.price).toLocaleString('en-IN')}
-                        <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: '0.5rem' }}>/bag</span>
-                    </p>
+                    {/* Price: MRP (strikethrough) + Wholesale price */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        {getMrp(product) > getItemPrice(product) && (
+                            <p
+                                style={{
+                                    fontSize: '1.25rem',
+                                    fontWeight: 500,
+                                    color: 'var(--text-tertiary)',
+                                    textDecoration: 'line-through',
+                                    letterSpacing: '-0.02em',
+                                    marginBottom: '0.25rem',
+                                }}
+                            >
+                                MRP ₹{getMrp(product).toLocaleString('en-IN')}
+                            </p>
+                        )}
+                        <p
+                            style={{
+                                fontSize: '2.5rem',
+                                fontWeight: 800,
+                                color: 'var(--primary)',
+                                letterSpacing: '-0.03em',
+                                margin: 0,
+                            }}
+                        >
+                            ₹{getItemPrice(product).toLocaleString('en-IN')}
+                            <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: '0.5rem' }}>
+                                /bag
+                            </span>
+                        </p>
+                        {getMrp(product) > getItemPrice(product) && (
+                            <p
+                                style={{
+                                    fontSize: '0.875rem',
+                                    color: '#166534',
+                                    fontWeight: 600,
+                                    marginTop: '0.5rem',
+                                    margin: '0.5rem 0 0',
+                                }}
+                            >
+                                You save ₹{(getMrp(product) - getItemPrice(product)).toLocaleString('en-IN')} per bag
+                            </p>
+                        )}
+                    </div>
 
                     <p
                         style={{
@@ -287,7 +332,7 @@ export default function ProductPage() {
                                         </button>
                                     </div>
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-                                        {quantity} bag{quantity > 1 ? 's' : ''} × ₹{parseFloat(product.price).toLocaleString('en-IN')}
+                                        {quantity} bag{quantity > 1 ? 's' : ''} × ₹{getItemPrice(product).toLocaleString('en-IN')}
                                     </span>
                                 </div>
                             </div>
@@ -307,9 +352,9 @@ export default function ProductPage() {
                                     }}
                                 >
                                     {added ? (
-                                        <>✓ Added to Cart — ₹{(parseFloat(product.price) * quantity).toLocaleString('en-IN')}</>
+                                        <>✓ Added to Cart — ₹{(getItemPrice(product) * quantity).toLocaleString('en-IN')}</>
                                     ) : (
-                                        <>Add to Cart — ₹{(parseFloat(product.price) * quantity).toLocaleString('en-IN')}</>
+                                        <>Add to Cart — ₹{(getItemPrice(product) * quantity).toLocaleString('en-IN')}</>
                                     )}
                                 </button>
                                 <button
@@ -359,7 +404,8 @@ export default function ProductPage() {
                             {[
                                 { label: 'Category', value: product.category },
                                 { label: 'Stock', value: `${product.stock} bags` },
-                                { label: 'Price', value: `₹${parseFloat(product.price).toLocaleString('en-IN')}/bag` },
+                                { label: 'MRP', value: `₹${getMrp(product).toLocaleString('en-IN')}/bag` },
+                                { label: 'Wholesale Price', value: `₹${getItemPrice(product).toLocaleString('en-IN')}/bag` },
                                 { label: 'SKU', value: `AD-${product.id}` },
                             ].map((detail) => (
                                 <div

@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
+// Helper: get effective selling price for a cart item (wholesale_price if set, else price)
+const getItemPrice = (item) => {
+    const wp = item.wholesale_price !== null && item.wholesale_price !== undefined ? item.wholesale_price : item.price;
+    return parseFloat(wp);
+};
+
 export default function CartPage() {
     const { cart, loading, cartTotal, cartCount, updateQuantity, removeFromCart } = useCart();
 
@@ -113,7 +119,7 @@ export default function CartPage() {
                                         {item.name}
                                     </Link>
                                     <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                        {formatINR(item.price)} each
+                                        {formatINR(getItemPrice(item))} each
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.75rem' }}>
@@ -177,7 +183,7 @@ export default function CartPage() {
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                                         <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '1.125rem' }}>
-                                            {formatINR(parseFloat(item.price) * item.quantity)}
+                                            {formatINR(getItemPrice(item) * item.quantity)}
                                         </span>
                                         <button
                                             className="btn btn-danger btn-sm"
@@ -225,7 +231,7 @@ export default function CartPage() {
                                     </p>
                                 </div>
                                 <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--primary)' }}>
-                                    {formatINR(parseFloat(item.price) * item.quantity)}
+                                    {formatINR(getItemPrice(item) * item.quantity)}
                                 </span>
                             </div>
                         ))}

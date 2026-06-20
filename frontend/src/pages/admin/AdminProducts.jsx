@@ -6,9 +6,12 @@ const emptyProduct = {
     slug: '',
     description: '',
     price: '',
+    mrp: '',
+    wholesale_price: '',
     image_url: '',
     category: '',
     stock: '',
+    is_featured: false,
 };
 
 export default function AdminProducts() {
@@ -62,9 +65,12 @@ export default function AdminProducts() {
             slug: product.slug,
             description: product.description || '',
             price: product.price.toString(),
+            mrp: product.mrp !== null && product.mrp !== undefined ? product.mrp.toString() : '',
+            wholesale_price: product.wholesale_price !== null && product.wholesale_price !== undefined ? product.wholesale_price.toString() : '',
             image_url: product.image_url || '',
             category: product.category || '',
             stock: product.stock.toString(),
+            is_featured: !!product.is_featured,
         });
         setShowModal(true);
         setError('');
@@ -96,6 +102,9 @@ export default function AdminProducts() {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.stock),
+                mrp: form.mrp === '' ? null : parseFloat(form.mrp),
+                wholesale_price: form.wholesale_price === '' ? null : parseFloat(form.wholesale_price),
+                is_featured: !!form.is_featured,
             };
             if (editingProduct) {
                 await adminAPI.updateProduct(editingProduct.id, data);
@@ -173,8 +182,9 @@ export default function AdminProducts() {
                                 <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
                                     <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Product</th>
                                     <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Category</th>
-                                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Price</th>
+                                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Pricing (MRP / Wholesale)</th>
                                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Stock</th>
+                                    <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Featured</th>
                                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Actions</th>
                                 </tr>
                             </thead>
@@ -193,8 +203,26 @@ export default function AdminProducts() {
                                             </div>
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>{product.category || '-'}</td>
-                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600 }}>
-                                            ₹{parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
+                                                {(() => {
+                                                    const mrp = product.mrp !== null && product.mrp !== undefined ? parseFloat(product.mrp) : parseFloat(product.price);
+                                                    const wp = product.wholesale_price !== null && product.wholesale_price !== undefined ? parseFloat(product.wholesale_price) : parseFloat(product.price);
+                                                    const hasDiscount = mrp > wp;
+                                                    return (
+                                                        <>
+                                                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                                                ₹{wp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </span>
+                                                            {hasDiscount && (
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textDecoration: 'line-through' }}>
+                                                                    ₹{mrp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                                             <span style={{
@@ -203,6 +231,24 @@ export default function AdminProducts() {
                                             }}>
                                                 {product.stock}
                                             </span>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                            {product.is_featured ? (
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    padding: '0.125rem 0.5rem',
+                                                    fontSize: '0.6875rem',
+                                                    fontWeight: 700,
+                                                    backgroundColor: '#ff453a',
+                                                    color: 'white',
+                                                    borderRadius: '9999px',
+                                                    letterSpacing: '0.03em',
+                                                }}>
+                                                    ★ Featured
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>—</span>
+                                            )}
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
@@ -280,13 +326,94 @@ export default function AdminProducts() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Price (₹) *</label>
+                                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
+                                        MRP (₹) <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={form.mrp}
+                                        onChange={(e) => setForm({ ...form, mrp: e.target.value })}
+                                        placeholder="Max retail price"
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
+                                        Wholesale Price (₹) <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={form.wholesale_price}
+                                        onChange={(e) => setForm({ ...form, wholesale_price: e.target.value })}
+                                        placeholder="Selling price"
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem' }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Base Price (₹) *</label>
                                     <input type="number" step="0.01" min="0" required value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Stock *</label>
                                     <input type="number" min="0" required value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem' }} />
                                 </div>
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '-0.25rem 0 0' }}>
+                                Leave MRP & Wholesale empty to use Base Price for both. If only Wholesale is set, it's used as selling price and MRP falls back to Base Price. If only MRP is set, it's used for strikethrough only.
+                            </p>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.75rem',
+                                padding: '0.625rem 0.75rem',
+                                backgroundColor: form.is_featured ? '#fff2f0' : 'var(--bg-secondary)',
+                                border: `1px solid ${form.is_featured ? '#ffccc7' : 'var(--border)'}`,
+                                borderRadius: '8px',
+                                transition: 'var(--transition-fast)',
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>
+                                        ★ Mark as Featured
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.125rem' }}>
+                                        Featured products appear first on the products page
+                                    </div>
+                                </div>
+                                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', flexShrink: 0 }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!form.is_featured}
+                                        onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
+                                        style={{ opacity: 0, width: 0, height: 0 }}
+                                    />
+                                    <span style={{
+                                        position: 'absolute',
+                                        cursor: 'pointer',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        backgroundColor: form.is_featured ? '#ff453a' : '#ccc',
+                                        transition: 'var(--transition-fast)',
+                                        borderRadius: '9999px',
+                                    }}>
+                                        <span style={{
+                                            position: 'absolute',
+                                            height: '18px',
+                                            width: '18px',
+                                            left: form.is_featured ? '22px' : '3px',
+                                            bottom: '3px',
+                                            backgroundColor: 'white',
+                                            transition: 'var(--transition-fast)',
+                                            borderRadius: '50%',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        }} />
+                                    </span>
+                                </label>
                             </div>
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Category</label>

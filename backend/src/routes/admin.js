@@ -67,7 +67,7 @@ router.get('/products', async (req, res) => {
         const total = parseInt(countResult.rows[0].count);
 
         const result = await db.query(
-            `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+            `SELECT * FROM products ${whereClause} ORDER BY is_featured DESC, created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
             [...params, parseInt(limit), offset]
         );
 
@@ -93,6 +93,9 @@ router.post(
         body('name').trim().notEmpty().withMessage('Name is required'),
         body('slug').trim().notEmpty().withMessage('Slug is required'),
         body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+        body('mrp').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('MRP must be a positive number'),
+        body('wholesale_price').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Wholesale price must be a positive number'),
+        body('is_featured').optional().isBoolean().withMessage('is_featured must be a boolean'),
         body('stock').isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
     ],
     async (req, res) => {
@@ -101,7 +104,7 @@ router.post(
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { name, slug, description, price, image_url, category, stock } = req.body;
+        const { name, slug, description, price, mrp, wholesale_price, is_featured, image_url, category, stock } = req.body;
 
         try {
             // Check slug uniqueness
@@ -110,11 +113,15 @@ router.post(
                 return res.status(409).json({ error: 'A product with this slug already exists.' });
             }
 
+            // Use provided wholesale_price/mrp; fall back to price if missing
+            const finalWholesale = wholesale_price !== undefined && wholesale_price !== null ? wholesale_price : price;
+            const finalMrp = mrp !== undefined && mrp !== null ? mrp : finalWholesale;
+
             const result = await db.query(
-                `INSERT INTO products (name, slug, description, price, image_url, category, stock)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO products (name, slug, description, price, mrp, wholesale_price, is_featured, image_url, category, stock)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING *`,
-                [name, slug, description || null, price, image_url || null, category || null, stock]
+                [name, slug, description || null, price, finalMrp, finalWholesale, !!is_featured, image_url || null, category || null, stock]
             );
 
             res.status(201).json({ product: result.rows[0] });
@@ -131,6 +138,9 @@ router.put(
     [
         body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
         body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+        body('mrp').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('MRP must be a positive number'),
+        body('wholesale_price').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Wholesale price must be a positive number'),
+        body('is_featured').optional().isBoolean().withMessage('is_featured must be a boolean'),
         body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
     ],
     async (req, res) => {
@@ -140,7 +150,7 @@ router.put(
         }
 
         const { id } = req.params;
-        const { name, slug, description, price, image_url, category, stock } = req.body;
+        const { name, slug, description, price, mrp, wholesale_price, is_featured, image_url, category, stock } = req.body;
 
         try {
             // Check product exists
@@ -162,6 +172,9 @@ router.put(
             const updatedSlug = slug !== undefined ? slug : product.slug;
             const updatedDescription = description !== undefined ? description : product.description;
             const updatedPrice = price !== undefined ? price : product.price;
+            const updatedMrp = mrp !== undefined ? mrp : product.mrp;
+            const updatedWholesale = wholesale_price !== undefined ? wholesale_price : product.wholesale_price;
+            const updatedFeatured = is_featured !== undefined ? !!is_featured : product.is_featured;
             const updatedImageUrl = image_url !== undefined ? image_url : product.image_url;
             const updatedCategory = category !== undefined ? category : product.category;
             const updatedStock = stock !== undefined ? stock : product.stock;
@@ -169,10 +182,11 @@ router.put(
             const result = await db.query(
                 `UPDATE products
            SET name = $1, slug = $2, description = $3, price = $4,
-               image_url = $5, category = $6, stock = $7, updated_at = NOW()
-           WHERE id = $8
+               mrp = $5, wholesale_price = $6, is_featured = $7,
+               image_url = $8, category = $9, stock = $10, updated_at = NOW()
+           WHERE id = $11
            RETURNING *`,
-                [updatedName, updatedSlug, updatedDescription, updatedPrice, updatedImageUrl, updatedCategory, updatedStock, id]
+                [updatedName, updatedSlug, updatedDescription, updatedPrice, updatedMrp, updatedWholesale, updatedFeatured, updatedImageUrl, updatedCategory, updatedStock, id]
             );
 
             res.json({ product: result.rows[0] });

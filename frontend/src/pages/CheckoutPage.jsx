@@ -140,6 +140,12 @@ export default function CheckoutPage() {
         navigate(`/orders/${order.id}`);
     };
 
+    // Helper: get effective selling price (wholesale_price if set, else price)
+    const getItemPrice = (item) => {
+        const wp = item.wholesale_price !== null && item.wholesale_price !== undefined ? item.wholesale_price : item.price;
+        return parseFloat(wp);
+    };
+
     // Determine items to display
     const displayItems = buyNowState
         ? [
@@ -156,7 +162,7 @@ export default function CheckoutPage() {
 
     const displayTotal = buyNowState
         ? parseFloat(buyNowState.price) * buyNowState.quantity
-        : cartTotal;
+        : displayItems.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0);
 
     // ── Payment Done View ──
     if (paymentStep === 'done' && order) {
@@ -464,7 +470,7 @@ export default function CheckoutPage() {
                                     </p>
                                 </div>
                                 <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--primary)' }}>
-                                    {formatINR(parseFloat(item.price) * item.quantity)}
+                                    {formatINR(getItemPrice(item) * item.quantity)}
                                 </span>
                             </div>
                         ))}

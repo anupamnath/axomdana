@@ -45,7 +45,12 @@ export function CartProvider({ children }) {
     };
 
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const cartTotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
+    // Use wholesale_price when available; fall back to price for older entries
+    const itemPrice = (item) => {
+        const wp = item.wholesale_price !== null && item.wholesale_price !== undefined ? item.wholesale_price : item.price;
+        return parseFloat(wp);
+    };
+    const cartTotal = cart.reduce((sum, item) => sum + itemPrice(item) * item.quantity, 0);
 
     return (
         <CartContext.Provider

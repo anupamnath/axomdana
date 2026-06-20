@@ -105,8 +105,11 @@ router.post(
             await client.query('BEGIN');
 
             // Get user's cart with product details
+            // Use COALESCE(wholesale_price, price) as the actual selling price
             const cartResult = await client.query(
-                `SELECT ci.product_id, ci.quantity, p.price, p.stock, p.name
+                `SELECT ci.product_id, ci.quantity,
+                        COALESCE(p.wholesale_price, p.price) AS price,
+                        p.stock, p.name
          FROM cart_items ci
          JOIN products p ON ci.product_id = p.id
          WHERE ci.user_id = $1`,
@@ -202,9 +205,9 @@ router.post(
         try {
             await client.query('BEGIN');
 
-            // Get product
+            // Get product — use wholesale_price (fall back to price) as the actual selling price
             const productResult = await client.query(
-                'SELECT id, name, price, stock FROM products WHERE id = $1',
+                'SELECT id, name, COALESCE(wholesale_price, price) AS price, stock FROM products WHERE id = $1',
                 [product_id]
             );
 

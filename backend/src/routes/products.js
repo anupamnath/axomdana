@@ -28,8 +28,8 @@ router.get('/', async (req, res) => {
         const countResult = await db.query(`SELECT COUNT(*) FROM products ${whereClause}`, params);
         const total = parseInt(countResult.rows[0].count);
 
-        // Fetch products with pagination
-        const dataSql = `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+        // Fetch products with pagination — featured products appear first
+        const dataSql = `SELECT * FROM products ${whereClause} ORDER BY is_featured DESC, created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
         const dataParams = [...params, parseInt(limit), offset];
         const result = await db.query(dataSql, dataParams);
 

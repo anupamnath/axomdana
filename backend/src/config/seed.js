@@ -21,7 +21,10 @@ const seed = async () => {
                 name: 'Premium Poultry Feed - Starter',
                 slug: 'premium-poultry-feed-starter',
                 description: 'High-protein starter feed for chicks (0-6 weeks). Formulated with essential vitamins, minerals, and amino acids for optimal growth and immune system development.',
-                price: 850.00,
+                price: 800.00,
+                mrp: 950.00,
+                wholesale_price: 800.00,
+                is_featured: true,
                 image_url: 'https://images.unsplash.com/photo-1559678197-90e9e0e0c7b0?w=600&q=80',
                 category: 'Poultry Feed',
                 stock: 500
@@ -30,7 +33,10 @@ const seed = async () => {
                 name: 'Premium Poultry Feed - Grower',
                 slug: 'premium-poultry-feed-grower',
                 description: 'Balanced grower feed for broilers and layers (6-20 weeks). Supports healthy weight gain and egg production with optimized calcium and protein levels.',
-                price: 780.00,
+                price: 750.00,
+                mrp: 880.00,
+                wholesale_price: 750.00,
+                is_featured: true,
                 image_url: 'https://images.unsplash.com/photo-1597764690521-15b1e6c0c5e0?w=600&q=80',
                 category: 'Poultry Feed',
                 stock: 450
@@ -39,7 +45,10 @@ const seed = async () => {
                 name: 'Dairy Cattle Feed - High Yield',
                 slug: 'dairy-cattle-feed-high-yield',
                 description: 'Nutrient-rich feed for high-yielding dairy cows. Enriched with bypass protein, minerals, and energy sources to maximize milk production and fat content.',
-                price: 1200.00,
+                price: 1150.00,
+                mrp: 1350.00,
+                wholesale_price: 1150.00,
+                is_featured: true,
                 image_url: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=600&q=80',
                 category: 'Cattle Feed',
                 stock: 300
@@ -57,7 +66,9 @@ const seed = async () => {
                 name: 'Goat & Sheep Feed - Growth Plus',
                 slug: 'goat-sheep-feed-growth-plus',
                 description: 'Specially formulated feed for meat and dairy goats and sheep. High in digestible fiber and protein for superior weight gain and milk quality.',
-                price: 720.00,
+                price: 680.00,
+                mrp: 780.00,
+                wholesale_price: 680.00,
                 image_url: 'https://images.unsplash.com/photo-1480044965905-02098d419e96?w=600&q=80',
                 category: 'Goat & Sheep Feed',
                 stock: 350
@@ -66,7 +77,7 @@ const seed = async () => {
                 name: 'Fish Feed - Floating Pellets',
                 slug: 'fish-feed-floating-pellets',
                 description: 'Premium floating fish feed pellets for carp, tilapia, and catfish. Slow-sinking formula with 32% protein for efficient growth and water quality management.',
-                price: 680.00,
+                price: 650.00,
                 image_url: 'https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=600&q=80',
                 category: 'Fish Feed',
                 stock: 600
@@ -75,7 +86,10 @@ const seed = async () => {
                 name: 'Horse Feed - Performance Blend',
                 slug: 'horse-feed-performance-blend',
                 description: 'High-energy performance feed for working and sport horses. Fortified with electrolytes, joint supplements, and controlled starch for sustained energy.',
-                price: 1450.00,
+                price: 1400.00,
+                mrp: 1600.00,
+                wholesale_price: 1400.00,
+                is_featured: true,
                 image_url: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=600&q=80',
                 category: 'Horse Feed',
                 stock: 150
@@ -93,7 +107,9 @@ const seed = async () => {
                 name: 'Mineral Mixture - Livestock',
                 slug: 'mineral-mixture-livestock',
                 description: 'Complete mineral and vitamin supplement for all livestock. Contains calcium, phosphorus, zinc, copper, selenium, and vitamins A, D3, E for overall health.',
-                price: 450.00,
+                price: 420.00,
+                mrp: 500.00,
+                wholesale_price: 420.00,
                 image_url: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=600&q=80',
                 category: 'Supplements',
                 stock: 800
@@ -102,7 +118,9 @@ const seed = async () => {
                 name: 'Organic Poultry Feed - Layer',
                 slug: 'organic-poultry-feed-layer',
                 description: 'Certified organic layer feed for free-range and backyard chickens. Made from non-GMO grains, fortified with omega-3s for nutrient-rich eggs.',
-                price: 1100.00,
+                price: 1050.00,
+                mrp: 1200.00,
+                wholesale_price: 1050.00,
                 image_url: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=600&q=80',
                 category: 'Poultry Feed',
                 stock: 200
@@ -129,10 +147,21 @@ const seed = async () => {
 
         for (const p of products) {
             await db.query(
-                `INSERT INTO products (name, slug, description, price, image_url, category, stock)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO products (name, slug, description, price, mrp, wholesale_price, is_featured, image_url, category, stock)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (slug) DO NOTHING`,
-                [p.name, p.slug, p.description, p.price, p.image_url, p.category, p.stock]
+                [
+                    p.name,
+                    p.slug,
+                    p.description,
+                    p.price,
+                    p.mrp !== undefined ? p.mrp : null,
+                    p.wholesale_price !== undefined ? p.wholesale_price : null,
+                    !!p.is_featured,
+                    p.image_url,
+                    p.category,
+                    p.stock,
+                ]
             );
         }
 

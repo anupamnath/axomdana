@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
     try {
         const result = await db.query(
             `SELECT ci.id, ci.quantity, ci.product_id,
-              p.name, p.price, p.image_url, p.slug, p.stock
+              p.name, p.price, p.mrp, p.wholesale_price, p.image_url, p.slug, p.stock
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
        WHERE ci.user_id = $1
@@ -78,7 +78,7 @@ router.post(
             // Return updated cart
             const cartResult = await db.query(
                 `SELECT ci.id, ci.quantity, ci.product_id,
-                p.name, p.price, p.image_url, p.slug, p.stock
+                p.name, p.price, p.mrp, p.wholesale_price, p.image_url, p.slug, p.stock
          FROM cart_items ci
          JOIN products p ON ci.product_id = p.id
          WHERE ci.user_id = $1
@@ -130,7 +130,7 @@ router.put(
 
             const cartResult = await db.query(
                 `SELECT ci.id, ci.quantity, ci.product_id,
-                p.name, p.price, p.image_url, p.slug, p.stock
+                p.name, p.price, p.mrp, p.wholesale_price, p.image_url, p.slug, p.stock
          FROM cart_items ci
          JOIN products p ON ci.product_id = p.id
          WHERE ci.user_id = $1
@@ -160,7 +160,7 @@ router.delete('/:id', async (req, res) => {
 
         const cartResult = await db.query(
             `SELECT ci.id, ci.quantity, ci.product_id,
-              p.name, p.price, p.image_url, p.slug, p.stock
+              p.name, p.price, p.mrp, p.wholesale_price, p.image_url, p.slug, p.stock
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
        WHERE ci.user_id = $1

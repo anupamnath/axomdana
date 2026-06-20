@@ -22,6 +22,9 @@ const migrate = async () => {
       slug VARCHAR(255) UNIQUE NOT NULL,
       description TEXT,
       price DECIMAL(10, 2) NOT NULL,
+      mrp DECIMAL(10, 2),
+      wholesale_price DECIMAL(10, 2),
+      is_featured BOOLEAN NOT NULL DEFAULT FALSE,
       image_url VARCHAR(500),
       category VARCHAR(100),
       stock INTEGER NOT NULL DEFAULT 0,
@@ -152,7 +155,39 @@ const migrate = async () => {
       ) THEN
         ALTER TABLE orders ADD COLUMN remarks TEXT;
       END IF;
+
+      -- Products: MRP (Maximum Retail Price) — original price shown with strikethrough
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'products' AND column_name = 'mrp'
+      ) THEN
+        ALTER TABLE products ADD COLUMN mrp DECIMAL(10, 2);
+      END IF;
+
+      -- Products: Wholesale Price - actual selling price (defaults to price for existing rows)
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'products' AND column_name = 'wholesale_price'
+      ) THEN
+        ALTER TABLE products ADD COLUMN wholesale_price DECIMAL(10, 2);
+      END IF;
+
+      -- Products: Featured flag — featured products show first in the products list
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'products' AND column_name = 'is_featured'
+      ) THEN
+        ALTER TABLE products ADD COLUMN is_featured BOOLEAN NOT NULL DEFAULT FALSE;
+      END IF;
     END $$;
+
+    -- Backfill: for existing products, set wholesale_price = price and mrp = price if missing
+    UPDATE products SET wholesale_price = price WHERE wholesale_price IS NULL;
+    UPDATE products SET mrp = price WHERE mrp IS NULL;
+
+    -- Index for fast featured-first ordering
+    CREATE INDEX IF NOT EXISTS idx_products_featured ON products(is_featured);
+    CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);
   `;
 
   try {
